@@ -139,13 +139,13 @@
 //!   the asynchronous world.
 
 #[cfg(feature = "tokio-support")]
-extern crate futures;
+extern crate futures_core;
 extern crate libc;
 #[cfg(feature = "mio-support")]
 extern crate mio;
 extern crate signal_hook_registry;
 #[cfg(feature = "tokio-support")]
-extern crate tokio_net;
+extern crate tokio;
 
 pub mod flag;
 #[cfg(not(windows))]

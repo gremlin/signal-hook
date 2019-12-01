@@ -2,9 +2,11 @@
 name = "tokio-tests"
 version = "0.1.0"
 authors = ["Michal 'vorner' Vaner <vorner@vorner.cz>"]
+edition = "2018"
 
 [dependencies]
-futures-preview = "0.3.0-alpha.19"
-tokio = "0.2.0-alpha.6"
+futures = { version = "~0.3", default-features = false }
+# Note: specifically *not* selecting rt-threaded.
+tokio = { version = "~0.2", default-features = false, features = ["rt-core", "time", "io-driver", "stream"] }
 libc = "~0.2"
 signal-hook = { path = "..", features = ["tokio-support"] }

@@ -504,9 +504,9 @@ mod tokio_support {
     use std::sync::atomic::Ordering;
     use std::task::{Context, Poll};
 
-    use futures::stream::Stream;
+    use futures_core::stream::Stream;
     use libc::{self, c_int};
-    use tokio_net::driver::{Handle, Registration};
+    use tokio::io::Registration;
 
     use super::Signals;
 
@@ -532,17 +532,15 @@ mod tokio_support {
         // It seems we can't easily use the iterator into the array here because of lifetimes ‒
         // using non-'static things in around futures is real pain.
         position: usize,
-        handle: Handle,
     }
 
     impl Async {
         /// Creates a new `Async`.
-        pub fn new(signals: Signals, handle: Handle) -> Result<Self, Error> {
+        pub fn new(signals: Signals) -> Result<Self, Error> {
             Ok(Async {
-                registration: Registration::new(),
+                registration: Registration::new(&signals)?,
                 inner: signals,
                 position: 0,
-                handle,
             })
         }
     }
@@ -553,7 +551,6 @@ mod tokio_support {
         fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             while !self.inner.is_closed() {
                 if self.position >= self.inner.waker.pending.len() {
-                    self.registration.register_with(&self.inner, &self.handle)?;
                     if !self.registration.poll_read_ready(cx)?.is_ready() {
                         return Poll::Pending;
                     }
@@ -587,27 +584,36 @@ mod tokio_support {
         /// This allows getting the signals in asynchronous way in a tokio event loop. Available
         /// only if compiled with the `tokio-support` feature enabled.
         ///
+        /// It needs to be run in the context of tokio runtime.
+        ///
         /// # Examples
         ///
-        /// ```rust,ignore
+        /// ```rust
+        /// extern crate futures;
         /// extern crate libc;
         /// extern crate signal_hook;
         /// extern crate tokio;
         ///
         /// use std::io::Error;
         ///
+        /// use futures::prelude::*;
         /// use signal_hook::iterator::Signals;
-        /// use tokio::runtime::current_thread::Runtime;
-        /// use tokio::prelude::*;
+        /// use tokio::runtime::Runtime;
         ///
         /// fn main() -> Result<(), Error> {
         ///     let mut runtime = Runtime::new().unwrap();
         ///
-        ///     let wait_signal = Signals::new(&[signal_hook::SIGUSR1])?
-        ///         .into_async()?
-        ///         .next()
-        ///         .map(|r| r.unwrap().unwrap()) // there is some and it's ok
-        ///         .map(|sig| assert_eq!(sig, signal_hook::SIGUSR1));
+        ///     // This crate is edition-2015 to support old compilers. That means no async for us
+        ///     // and our examples, but users of the crate can safely use them. Therefore little
+        ///     // bit of manual futures combinators and such are in place in this example.
+        ///     let wait_signal = runtime.enter(|| -> Result<_, Error> {
+        ///         let wait_signals = Signals::new(&[signal_hook::SIGUSR1])?
+        ///             .into_async()?
+        ///             .next()
+        ///             .map(|r| r.unwrap().unwrap()) // there is some and it's ok
+        ///             .map(|sig| assert_eq!(sig, signal_hook::SIGUSR1));
+        ///         Ok(wait_signals)
+        ///     })?;
         ///
         ///     unsafe { libc::raise(signal_hook::SIGUSR1) };
         ///
@@ -616,12 +622,7 @@ mod tokio_support {
         /// }
         /// ```
         pub fn into_async(self) -> Result<Async, Error> {
-            Async::new(self, Handle::default())
-        }
-
-        /// Turns the iterator into a stream, tied into a specific tokio reactor.
-        pub fn into_async_with_handle(self, handle: Handle) -> Result<Async, Error> {
-            Async::new(self, handle)
+            Async::new(self)
         }
     }
 }

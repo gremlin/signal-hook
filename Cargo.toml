@@ -15,7 +15,7 @@ maintenance = { status = "actively-developed" }
 
 [features]
 mio-support = ["mio"]
-tokio-support = ["futures-preview", "mio-support", "tokio-net"]
+tokio-support = ["futures-core", "mio-support", "tokio"]
 
 [workspace]
 members = [
@@ -26,13 +26,15 @@ members = [
 
 [dependencies]
 libc = "~0.2"
-futures-preview = { version = "0.3.0-alpha.19", optional = true }
+futures-core = { version = "0.3", optional = true }
 mio = { version = "~0.6", optional = true }
 signal-hook-registry = { version = "~1", path = "signal-hook-registry" }
-tokio-net = { version = "0.2.0-alpha", optional = true }
+tokio = { version = "~0.2", optional = true, default-features = false, features = ["io-driver"] }
 
 [dev-dependencies]
 version-sync = "~0.8"
+tokio = { version = "~0.2", features = ["rt-core"] }
+futures = "~0.3"
 
 [package.metadata.docs.rs]
 all-features = true
