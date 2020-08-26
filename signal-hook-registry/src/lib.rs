@@ -3,6 +3,8 @@
     test(attr(deny(warnings)))
 )]
 #![warn(missing_docs)]
+// Note: we Rust support 1.26. Some of the code might be considered unidiomatic by today standards,
+// but we don't want to break the support *just* because that.
 #![allow(unknown_lints, renamed_and_remove_lints, bare_trait_objects)]
 
 //! Backend of the [signal-hook] crate.
@@ -28,7 +30,7 @@
 //! It handles dispatching the callbacks and managing them in a way that uses only the
 //! [async-signal-safe] functions inside the signal handler. Note that the callbacks are still run
 //! inside the signal handler, so it is up to the caller to ensure they are also
-//! [async-signal-safe].
+//! [async-signal-safe] and that they don't panic.
 //!
 //! # What this is for
 //!
@@ -61,8 +63,9 @@
 //! [signal-hook]: https://docs.rs/signal-hook
 //! [async-signal-safe]: http://www.man7.org/linux/man-pages/man7/signal-safety.7.html
 
-extern crate arc_swap;
 extern crate libc;
+
+mod half_lock;
 
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, HashMap};
@@ -73,10 +76,8 @@ use std::ptr;
 // Once::new is now a const-fn. But it is not stable in all the rustc versions we want to support
 // yet.
 #[allow(deprecated)]
-use std::sync::ONCE_INIT;
-use std::sync::{Arc, Mutex, MutexGuard, Once};
+use std::sync::{Arc, Once, ONCE_INIT};
 
-use arc_swap::IndependentArcSwap;
 #[cfg(not(windows))]
 use libc::{c_int, c_void, sigaction, siginfo_t, sigset_t, SIG_BLOCK, SIG_SETMASK};
 #[cfg(windows)]
@@ -86,6 +87,8 @@ use libc::{c_int, sighandler_t};
 use libc::{SIGFPE, SIGILL, SIGKILL, SIGSEGV, SIGSTOP};
 #[cfg(windows)]
 use libc::{SIGFPE, SIGILL, SIGSEGV};
+
+use half_lock::HalfLock;
 
 // These constants are not defined in the current version of libc, but it actually
 // exists in Windows CRT.
@@ -101,21 +104,9 @@ const SIG_ERR: sighandler_t = !0;
 #[allow(non_camel_case_types)]
 struct siginfo_t;
 
-// # Internal workings
-//
-// This uses a form of RCU. There's an atomic pointer to the current action descriptors (in the
-// form of IndependentArcSwap, to be able to track what, if any, signal handlers still use the
-// version). A signal handler takes a copy of the pointer and calls all the relevant actions.
-//
-// Modifications to that are protected by a mutex, to avoid juggling multiple signal handlers at
-// once (eg. not calling sigaction concurrently). This should not be a problem, because modifying
-// the signal actions should be initialization only anyway. To avoid all allocations and also
-// deallocations inside the signal handler, after replacing the pointer, the modification routine
-// needs to busy-wait for the reference count on the old pointer to drop to 1 and take ownership ‒
-// that way the one deallocating is the modification routine, outside of the signal handler.
-
+// Every new action gets a (hopefully unique; it's u128) ID.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-struct ActionId(u64);
+struct ActionId(u128);
 
 /// An ID of registered action.
 ///
@@ -127,7 +118,7 @@ pub struct SigId {
     action: ActionId,
 }
 
-// This should be dyn Fn(...), but we want to support Rust 1.26.0 and that one doesn't allow them
+// This should be dyn Fn(...), but we want to support Rust 1.26.0 and that one doesn't allow dyn
 // yet.
 #[allow(unknown_lints, bare_trait_objects)]
 type Action = Fn(&siginfo_t) + Send + Sync;
@@ -183,11 +174,23 @@ impl Slot {
     }
 }
 
-type AllSignals = HashMap<c_int, Slot>;
+/// All the global data about signals.
+///
+/// When updating, it is cloned and replaced with the helper abstraction in [half_lock].
+#[derive(Clone)]
+struct SignalData {
+    /// Actions for each signal we are interested in.
+    ///
+    /// Used inside the actual signal handler.
+    signals: HashMap<c_int, Slot>,
+
+    /// We just want the ID counter protected by the same mutex in half-lock. Not actually accessed
+    /// inside signal handlers.
+    next_id: u128,
+}
 
 struct GlobalData {
-    all_signals: IndependentArcSwap<AllSignals>,
-    rcu_lock: Mutex<u64>,
+    signals: HalfLock<SignalData>,
 }
 
 static mut GLOBAL_DATA: Option<GlobalData> = None;
@@ -201,22 +204,13 @@ impl GlobalData {
     fn ensure() -> &'static Self {
         GLOBAL_INIT.call_once(|| unsafe {
             GLOBAL_DATA = Some(GlobalData {
-                all_signals: IndependentArcSwap::from_pointee(HashMap::new()),
-                rcu_lock: Mutex::new(0),
+                signals: HalfLock::new(SignalData {
+                    signals: HashMap::new(),
+                    next_id: 0,
+                }),
             });
         });
         Self::get()
-    }
-    fn load(&self) -> (AllSignals, MutexGuard<u64>) {
-        let lock = self.rcu_lock.lock().unwrap();
-        let signals = AllSignals::clone(&self.all_signals.load());
-        (signals, lock)
-    }
-    fn store(&self, signals: AllSignals, lock: MutexGuard<u64>) {
-        let signals = Arc::new(signals);
-        // We are behind a mutex, so we can safely replace it without any RCU on the ArcSwap side.
-        self.all_signals.store(signals);
-        drop(lock);
     }
 }
 
@@ -242,9 +236,9 @@ extern "C" fn handler(sig: c_int) {
         }
     }
 
-    let signals = GlobalData::get().all_signals.load_signal_safe();
+    let sigdata = GlobalData::get().signals.lock();
 
-    if let Some(ref slot) = signals.get(&sig) {
+    if let Some(ref slot) = sigdata.signals.get(&sig) {
         let fptr = slot.prev;
         if fptr != 0 && fptr != SIG_DFL && fptr != SIG_IGN {
             // FFI ‒ calling the original signal handler.
@@ -262,9 +256,9 @@ extern "C" fn handler(sig: c_int) {
 
 #[cfg(not(windows))]
 extern "C" fn handler(sig: c_int, info: *mut siginfo_t, data: *mut c_void) {
-    let signals = GlobalData::get().all_signals.load_signal_safe();
+    let sigdata = GlobalData::get().signals.lock();
 
-    if let Some(ref slot) = signals.get(&sig) {
+    if let Some(ref slot) = sigdata.signals.get(&sig) {
         let fptr = slot.prev.sa_sigaction;
         if fptr != 0 && fptr != libc::SIG_DFL && fptr != libc::SIG_IGN {
             // FFI ‒ calling the original signal handler.
@@ -423,8 +417,9 @@ const FORBIDDEN_IMPL: &[c_int] = &[SIGKILL, SIGSTOP, SIGILL, SIGFPE, SIGSEGV];
 /// As panicking from within a signal handler would be a panic across FFI boundary (which is
 /// undefined behavior), the passed handler must not panic.
 ///
-/// If you find these limitations hard to satisfy, choose from the helper functions in submodules
-/// of this library ‒ these provide safe interface to use some common signal handling patters.
+/// If you find these limitations hard to satisfy, choose from the helper functions in
+/// [signal-hook](https://docs.rs/signal-hook) ‒ these provide safe interface to use some common
+/// signal handling patters.
 ///
 /// # Race condition
 ///
@@ -440,7 +435,7 @@ const FORBIDDEN_IMPL: &[c_int] = &[SIGKILL, SIGSTOP, SIGILL, SIGFPE, SIGSEGV];
 ///
 /// Even when it is possible to repeatedly install and remove actions during the lifetime of a
 /// program, the installation and removal is considered a slow operation and should not be done
-/// very often. Also, there's limited (though huge) amount of distinct IDs (they are `u64`).
+/// very often. Also, there's limited (though huge) amount of distinct IDs (they are `u128`).
 ///
 /// # Examples
 ///
@@ -534,26 +529,26 @@ unsafe fn register_unchecked_impl<F>(signal: c_int, action: F) -> Result<SigId, 
 where
     F: Fn(&siginfo_t) + Sync + Send + 'static,
 {
+    let action = Arc::new(action);
+    let mut id = ActionId(0); // We'll replace it below, we just need a place to leak it out.
     let globals = GlobalData::ensure();
-    let (mut signals, mut lock) = globals.load();
-    let id = ActionId(*lock);
-    *lock += 1;
-    let action = Arc::from(action);
     without_signal(signal, || {
-        match signals.entry(signal) {
-            Entry::Occupied(mut occupied) => {
-                assert!(occupied.get_mut().actions.insert(id, action).is_none());
+        globals.signals.replace(|sigdata| {
+            let mut sigdata = sigdata.clone();
+            id = ActionId(sigdata.next_id);
+            sigdata.next_id += 1;
+            match sigdata.signals.entry(signal) {
+                Entry::Occupied(mut occupied) => {
+                    assert!(occupied.get_mut().actions.insert(id, action).is_none());
+                }
+                Entry::Vacant(place) => {
+                    let mut slot = Slot::new(signal)?;
+                    slot.actions.insert(id, action);
+                    place.insert(slot);
+                }
             }
-            Entry::Vacant(place) => {
-                let mut slot = Slot::new(signal)?;
-                slot.actions.insert(id, action);
-                place.insert(slot);
-            }
-        }
-
-        globals.store(signals, lock);
-
-        Ok(())
+            Ok(sigdata)
+        })
     })?;
 
     Ok(SigId { signal, action: id })
@@ -578,15 +573,18 @@ where
 /// SIGKILL).
 pub fn unregister(id: SigId) -> bool {
     let globals = GlobalData::ensure();
-    let (mut signals, lock) = globals.load();
-    let mut replace = false;
-    if let Some(slot) = signals.get_mut(&id.signal) {
-        replace = slot.actions.remove(&id.action).is_some();
-    }
-    if replace {
-        globals.store(signals, lock);
-    }
-    replace
+    let mut changed = false;
+    globals
+        .signals
+        .replace(|sigdata| -> Result<_, ()> {
+            let mut sigdata = sigdata.clone();
+            if let Some(slot) = sigdata.signals.get_mut(&id.signal) {
+                changed = slot.actions.remove(&id.action).is_some();
+            }
+            Ok(sigdata)
+        })
+        .unwrap();
+    changed
 }
 
 /// Removes all previously installed actions for a given signal.
@@ -607,18 +605,21 @@ pub fn unregister(id: SigId) -> bool {
 /// used by the top-level application.
 pub fn unregister_signal(signal: c_int) -> bool {
     let globals = GlobalData::ensure();
-    let (mut signals, lock) = globals.load();
-    let mut replace = false;
-    if let Some(slot) = signals.get_mut(&signal) {
-        if !slot.actions.is_empty() {
-            slot.actions.clear();
-            replace = true;
-        }
-    }
-    if replace {
-        globals.store(signals, lock);
-    }
-    replace
+    let mut changed = false;
+    globals
+        .signals
+        .replace(|sigdata| -> Result<_, ()> {
+            let mut sigdata = sigdata.clone();
+            if let Some(slot) = sigdata.signals.get_mut(&signal) {
+                if !slot.actions.is_empty() {
+                    slot.actions.clear();
+                    changed = true;
+                }
+            }
+            Ok(sigdata)
+        })
+        .unwrap();
+    changed
 }
 
 #[cfg(test)]
