@@ -500,7 +500,7 @@ mod mio_support {
             unsafe { libc::raise(crate::SIGUSR1) };
             poll.poll(&mut events, Some(Duration::from_secs(10)))
                 .unwrap();
-            let event = events.iter().next().unwrap();
+            let event = events.iter().next().expect("No event received");
             assert!(event.readiness().is_readable());
             assert_eq!(token, event.token());
             let sig = signals.pending().next().unwrap();
