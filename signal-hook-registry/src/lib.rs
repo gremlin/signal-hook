@@ -69,6 +69,7 @@ mod half_lock;
 
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::io::Error;
 use std::mem;
 #[cfg(not(windows))]
@@ -134,6 +135,15 @@ struct Slot {
     actions: BTreeMap<ActionId, Arc<Action>>,
 }
 
+impl Debug for Slot {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        fmt.debug_struct("Slot")
+            .field("prev", &"...")
+            .field("actions", &self.actions.keys())
+            .finish()
+    }
+}
+
 impl Slot {
     #[cfg(windows)]
     fn new(signal: libc::c_int) -> Result<Self, Error> {
@@ -177,7 +187,7 @@ impl Slot {
 /// All the global data about signals.
 ///
 /// When updating, it is cloned and replaced with the helper abstraction in [half_lock].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SignalData {
     /// Actions for each signal we are interested in.
     ///
@@ -534,6 +544,7 @@ where
     let globals = GlobalData::ensure();
     without_signal(signal, || {
         globals.signals.replace(|sigdata| {
+            eprintln!("Old data: {:#?}", sigdata);
             let mut sigdata = sigdata.clone();
             id = ActionId(sigdata.next_id);
             sigdata.next_id += 1;
@@ -547,6 +558,7 @@ where
                     place.insert(slot);
                 }
             }
+            eprintln!("New data: {:#?}", sigdata);
             Ok(sigdata)
         })
     })?;
