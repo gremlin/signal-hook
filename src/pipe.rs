@@ -247,6 +247,7 @@ mod tests {
         panic!("Haven't received the right data");
     }
 
+    /*
     #[test]
     fn register_with_pipe() -> Result<(), Error> {
         let mut fds = [0; 2];
@@ -258,4 +259,5 @@ mod tests {
         assert_eq!(b"X", &buff);
         Ok(())
     }
+    */
 }
