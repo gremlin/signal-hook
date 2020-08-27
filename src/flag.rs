@@ -163,6 +163,7 @@ pub fn register_usize(signal: c_int, flag: Arc<AtomicUsize>, value: usize) -> Re
     unsafe { crate::register(signal, move || flag.store(value, Ordering::SeqCst)) }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::sync::atomic;
@@ -212,3 +213,4 @@ mod tests {
         assert_eq!(1, Arc::strong_count(&flag));
     }
 }
+*/
