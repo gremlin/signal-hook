@@ -268,9 +268,12 @@ extern "C" fn handler(sig: c_int) {
 extern "C" fn handler(sig: c_int, info: *mut siginfo_t, data: *mut c_void) {
     let sigdata = GlobalData::get().signals.lock();
 
+    eprintln!("Handling signal {}", sig);
+
     if let Some(ref slot) = sigdata.signals.get(&sig) {
         let fptr = slot.prev.sa_sigaction;
         if fptr != 0 && fptr != libc::SIG_DFL && fptr != libc::SIG_IGN {
+            eprintln!("Calling the original handler");
             // FFI ‒ calling the original signal handler.
             unsafe {
                 // Android is broken and uses different int types than the rest (and different
@@ -309,7 +312,8 @@ extern "C" fn handler(sig: c_int, info: *mut siginfo_t, data: *mut c_void) {
             }
         });
 
-        for action in slot.actions.values() {
+        for (id, action) in slot.actions.iter() {
+            eprintln!("Running action {:?}", id);
             action(info);
         }
     }

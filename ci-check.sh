@@ -29,8 +29,8 @@ fi
 export RUSTFLAGS="-D warnings"
 
 cargo build --all --all-features
-cargo test --all --all-features
-cargo test --all
+cargo test --all --all-features -- --nocapture
+cargo test --all -- --nocapture
 cargo doc --no-deps
 
 # Sometimes nightly doesn't have clippy or rustfmt, so don't try that there.
