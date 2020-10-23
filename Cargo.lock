@@ -183,12 +183,13 @@ checksum = "ddba4c30a78328befecec92fc94970e53b3ae385827d28620f0f5bb2493081e0"
 [[package]]
 name = "libc"
 version = "0.2.79"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
 name = "libc"
 version = "0.2.79"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
+source = "git+https://github.com/gremlin/libc.git?branch=update-musl-siginfo#e90e708724a67b00d1940e78779e1e2791a1dd63"
 
 [[package]]
 name = "lock_api"
@@ -576,7 +577,7 @@ dependencies = [
 name = "signal-hook"
 version = "0.1.16"
 dependencies = [
- "libc 0.2.79",
+ "libc 0.2.79 (git+https://github.com/gremlin/libc.git?branch=update-musl-siginfo)",
  "serial_test",
  "signal-hook-registry",
  "version-sync",
@@ -586,7 +587,7 @@ dependencies = [
 name = "signal-hook-mio"
 version = "0.1.0"
 dependencies = [
- "libc 0.2.79",
+ "libc 0.2.79 (git+https://github.com/gremlin/libc.git?branch=update-musl-siginfo)",
  "mio 0.6.16",
  "mio 0.7.0",
  "mio-uds",
@@ -600,7 +601,7 @@ name = "signal-hook-registry"
 version = "1.2.1"
 dependencies = [
  "arc-swap",
- "libc 0.2.79",
+ "libc 0.2.79 (git+https://github.com/gremlin/libc.git?branch=update-musl-siginfo)",
  "signal-hook",
  "version-sync",
 ]
@@ -610,7 +611,7 @@ name = "signal-hook-tokio"
 version = "0.1.0"
 dependencies = [
  "futures",
- "libc 0.2.79",
+ "libc 0.2.79 (git+https://github.com/gremlin/libc.git?branch=update-musl-siginfo)",
  "serial_test",
  "signal-hook",
  "tokio",

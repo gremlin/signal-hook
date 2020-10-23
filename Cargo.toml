@@ -27,7 +27,7 @@ members = [
 
 [dependencies]
 # libc = "~0.2"
-libc = { version = "0.2.79", path = "../libc" }
+libc = { version = "0.2.79", git = "https://github.com/gremlin/libc.git", branch = "update-musl-siginfo" }
 signal-hook-registry = { version = "~1.2", path = "signal-hook-registry" }
 
 [dev-dependencies]
