@@ -145,7 +145,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbe6e417e7d0975db6512b90796e8ce223145ac4e33c377e4a42882a0e88bb08"
 dependencies = [
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8",
 ]
 
@@ -179,6 +179,10 @@ name = "lazycell"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddba4c30a78328befecec92fc94970e53b3ae385827d28620f0f5bb2493081e0"
+
+[[package]]
+name = "libc"
+version = "0.2.79"
 
 [[package]]
 name = "libc"
@@ -243,7 +247,7 @@ dependencies = [
  "iovec",
  "kernel32-sys",
  "lazycell",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "miow 0.2.1",
  "net2",
@@ -258,7 +262,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e9971bc8349a361217a8f2a41f5d011274686bd4436465ba51730921039d7fb"
 dependencies = [
  "lazy_static",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "miow 0.3.3",
  "ntapi",
@@ -272,7 +276,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "966257a94e196b11bb43aca423754d87429960a768de9414f3691d6957abf125"
 dependencies = [
  "iovec",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16",
 ]
 
@@ -305,7 +309,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42550d9fb7b6684a6d404d9fa7250c2eb2646df731d1c06afc06dcee9e1bcf88"
 dependencies = [
  "cfg-if",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.8",
 ]
 
@@ -330,7 +334,7 @@ version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
 dependencies = [
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -368,7 +372,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad7f7e6ebdc79edff6fdcb87a55b620174f7a989e3eb31b65231f4af57f00b8c"
 dependencies = [
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "rustc_version",
  "smallvec 0.6.5",
@@ -383,7 +387,7 @@ checksum = "d58c7c768d4ba344e3e8d72518ac13e259d7c7ade24167003b8488e10b6740a3"
 dependencies = [
  "cfg-if",
  "cloudabi",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall",
  "smallvec 1.4.2",
  "winapi 0.3.8",
@@ -450,7 +454,7 @@ checksum = "e464cd887e869cddcae8792a4ee31d23c7edd516700695608f5b98c67ee0131c"
 dependencies = [
  "cloudabi",
  "fuchsia-zircon",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.2.2",
  "winapi 0.3.8",
 ]
@@ -572,7 +576,7 @@ dependencies = [
 name = "signal-hook"
 version = "0.1.16"
 dependencies = [
- "libc",
+ "libc 0.2.79",
  "serial_test",
  "signal-hook-registry",
  "version-sync",
@@ -582,7 +586,7 @@ dependencies = [
 name = "signal-hook-mio"
 version = "0.1.0"
 dependencies = [
- "libc",
+ "libc 0.2.79",
  "mio 0.6.16",
  "mio 0.7.0",
  "mio-uds",
@@ -596,7 +600,7 @@ name = "signal-hook-registry"
 version = "1.2.1"
 dependencies = [
  "arc-swap",
- "libc",
+ "libc 0.2.79",
  "signal-hook",
  "version-sync",
 ]
@@ -606,7 +610,7 @@ name = "signal-hook-tokio"
 version = "0.1.0"
 dependencies = [
  "futures",
- "libc",
+ "libc 0.2.79",
  "serial_test",
  "signal-hook",
  "tokio",
@@ -641,7 +645,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8b74de517221a2cb01a53349cf54182acdc31a074727d3079068448c0676d85"
 dependencies = [
  "cfg-if",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall",
  "winapi 0.3.8",
 ]
@@ -840,7 +844,7 @@ dependencies = [
  "bytes",
  "futures",
  "iovec",
- "libc",
+ "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "mio 0.6.16",
  "mio-uds",
