@@ -24,7 +24,8 @@ support-v0_1 = ["tokio-0_1", "futures-0_1"]
 
 [dependencies]
 # libc = "~0.2"
-libc = { version = "0.2.79", git = "https://github.com/gremlin/libc.git", branch = "update-musl-siginfo" }
+# nfx: Replace the following when 0.2.80 is published
+libc = { version = "0.2.79", git = "https://github.com/rust-lang/libc", branch = "master" }
 signal-hook = { version = "~0.1", path = ".." }
 tokio-0_1 = { package = "tokio", version = "~0.1", optional = true}
 futures-0_1 = { package = "futures", version = "~0.1", optional = true}

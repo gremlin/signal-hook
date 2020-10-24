@@ -27,7 +27,8 @@ members = [
 
 [dependencies]
 # libc = "~0.2"
-libc = { version = "0.2.79", git = "https://github.com/gremlin/libc.git", branch = "update-musl-siginfo" }
+# nfx: Replace the following when 0.2.80 is published
+libc = { version = "0.2.79", git = "https://github.com/rust-lang/libc", branch = "master" }
 signal-hook-registry = { version = "~1.2", path = "signal-hook-registry" }
 
 [dev-dependencies]
