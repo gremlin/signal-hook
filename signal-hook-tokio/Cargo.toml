@@ -23,9 +23,7 @@ maintenance = { status = "actively-developed" }
 support-v0_1 = ["tokio-0_1", "futures-0_1"]
 
 [dependencies]
-# libc = "~0.2"
-# nfx: Replace the following when 0.2.80 is published
-libc = { version = "0.2.79", git = "https://github.com/rust-lang/libc", branch = "master" }
+libc = "~0.2.80"
 signal-hook = { version = "~0.1", path = ".." }
 tokio-0_1 = { package = "tokio", version = "~0.1", optional = true}
 futures-0_1 = { package = "futures", version = "~0.1", optional = true}

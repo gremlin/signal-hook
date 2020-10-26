@@ -26,9 +26,7 @@ members = [
 ]
 
 [dependencies]
-# libc = "~0.2"
-# nfx: Replace the following when 0.2.80 is published
-libc = { version = "0.2.79", git = "https://github.com/rust-lang/libc", branch = "master" }
+libc = "~0.2.80"
 signal-hook-registry = { version = "~1.2", path = "signal-hook-registry" }
 
 [dev-dependencies]

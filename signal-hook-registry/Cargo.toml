@@ -19,9 +19,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 arc-swap = "~0.4"
-# libc = "~0.2"
-# nfx: Replace the following when 0.2.80 is published
-libc = { version = "0.2.79", git = "https://github.com/rust-lang/libc", branch = "master" }
+libc = "~0.2.80"
 
 [dev-dependencies]
 version-sync = "~0.8"
